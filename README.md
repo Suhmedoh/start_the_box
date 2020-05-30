@@ -22,3 +22,6 @@ This is a python3 tool used to quickly start up enumeration & info gathering on 
 * if ftp port is open, check for anonymous login
 * check if there are any mountable shares, automatically mount them
 * allow user to set default directory for machine locations
+* fix output/formatting
+* add progress bar?
+
