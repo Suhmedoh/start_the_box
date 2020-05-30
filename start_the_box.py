@@ -28,7 +28,9 @@ if website.status_code == 200:
     print("There seems to be a website running on port 80 at {}.".format(ip))
     print("Kicking off gobuster. Use custom wordlist? (default: /usr/share/dirbuster/directory-list-2.3-small.txt)")
     wl_path = input()
-    wordlist = "/usr/share/wordlists/dirbuster/directory-list-2.3-small.txt" if wl_path == "" else wl_path 
+    if wl_path == "":
+        wordlist = "/usr/share/wordlists/dirbuster/directory-list-2.3-small.txt" 
+    else wl_path 
 
     #TODO: fix this, looks like it stars process, but doesn't save output
     # Call gobuster with wordlist
