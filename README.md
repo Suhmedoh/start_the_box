@@ -19,6 +19,6 @@ This is a python3 tool used to quickly start up enumeration & info gathering on 
 	* allow user to select active box?
 * output a "writeup.txt" with box name + ip, date, important results
 * find more scripts to kick off based on ports
-~~* if ftp port is open, check for anonymous login~~
+* ~~if ftp port is open, check for anonymous login~~
 * check if there are any mountable shares, automatically mount them
 * allow user to set default directory for machine locations
