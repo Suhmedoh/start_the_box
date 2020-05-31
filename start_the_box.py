@@ -26,13 +26,14 @@
 #    .----:++:..-.`                                                              
 #     `-:-.``     
 
+import argparse
+from termcolor import colored
+import getpass
 import os
 import pwd
-import subprocess
-import requests
 import re
-import argparse
-import getpass
+import requests
+import subprocess
 import time
 
 # Get username and ID info for paths
@@ -62,12 +63,12 @@ web_up = False
 host = name.lower() + ".htb"
 
 # Create the folder for the machine
-print("Creating folder...")
+print(colored("Creating folder...", "cyan"))
 box_path = f"/home/{user}/htb/machines/{name}"
 os.mkdir(box_path)
 
 # Add the boxname to /etc/hosts/
-print(f"Adding {host} to /etc/hosts...")
+print(colored(f"Adding {host} to /etc/hosts...", "cyan"))
 with open("/etc/hosts", "a") as hosts_file:
     hosts_file.write(f"{ip}\t{host}")
     hosts_file.write("\n")
@@ -78,29 +79,30 @@ try:
     website = requests.get(f"http://{host}")
 except:
     web_up = False
-    print("There doesn't seem to be a website on port 80.")
+    print(colored("There doesn't seem to be a website on port 80.", "yellow"))
 
 ## If there is a website, kick off gobuster
 try:
     if website.status_code == 200:
         web_up = True
-        print(f"There seems to be a website running on port 80 on {host}...")
+        print(colored(f"There seems to be a website running on port 80 on {host}...", "green"))
         print("Kicking off gobuster...")
         if wordlist is None:
             wordlist = "/usr/share/wordlists/dirbuster/directory-list-2.3-small.txt" 
 
-        #TODO: fix this, looks like it starts process, but doesn't save output
+        # TODO: does this work?
         # Call gobuster with wordlist
         gobuster = subprocess.Popen(["gobuster", "dir", "--url", f"http://{host}", "-w", wordlist, "-o", box_path + "/gobuster_findings.txt"], stdout=subprocess.DEVNULL)
 except:
     print("Not running gobuster.")
 
 # Start a quick nmap looking for obvious services to start testing asap
+print(colored("Kicking off a quick nmap for the top 200 ports...", "cyan"))
 nmap_quick = subprocess.Popen(["nmap", "--top-ports", "200", "-sS", ip, "-oN", box_path + "/nmap_quick.txt"], stdout=subprocess.DEVNULL)
 
 # Check if ftp is open
 nmap_quick.wait()
-print("Checking if ftp is open...")
+print(colored("Checking if ftp is open...", "cyan"))
 ftp_open = False
 
 # Search for ftp port
@@ -109,18 +111,19 @@ with open(box_path + "/nmap_quick.txt") as f:
     for line in lines:
         if (re.search(r"21\/tcp\s*open\s*ftp", line)):
             ftp_open = True
-            print("Found open ftp port(21), attempting anonymous ftp login...")
+            print(colored("Found open ftp port(21), attempting anonymous ftp login...", "green"))
 
             # Run a script which simply checks for anonymous access to ftp
             ftp = subprocess.check_output([os.getcwd() + "/ftp_check.sh"])
             anonymous_login = re.search(r"Anonymous access allowed", ftp.decode('UTF-8'))
             if anonymous_login != None:
-                ftp_open == True
+                print(colored("Anonymous access allowed!", "green"))
+
 if ftp_open == False:
-   print("ftp not open.")
+   print(colored("ftp not open.", "red"))
 
 # Start a full scan in nice nmap output, which we can refer to easily
-print("Starting full nmap scan...")
+print(colored("Starting full nmap scan...", "cyan"))
 nmap_full = subprocess.Popen(["nmap", "-p-", "-T4", ip, "-oN", f"/home/{user}/htb/machines/{name}/nmap_full.txt"], stdout=subprocess.DEVNULL)
 
 # Give tips on what do do
@@ -142,7 +145,7 @@ nmap_full.wait()
 gobuster.wait()
 
 # chmod directories
-print("Chmod'ing local directories and files for non-sudo access...")
+print(colored("Chmod'ing local directories and files for non-sudo access...", "cyan"))
 box_path = f"/home/{user}/htb/machines/{name}"
 for root, dirs, files in os.walk(box_path):
     for dir in dirs:
@@ -150,5 +153,5 @@ for root, dirs, files in os.walk(box_path):
         for file in files:
             os.chown(os.path.join(root, file), uid, gid)
 
-print("Done! Check " + box_path + " to see script outputs. Happy hacking!")
+print(colored("Done! Check " + box_path + " to see script outputs. Happy hacking!", "green"))
 
