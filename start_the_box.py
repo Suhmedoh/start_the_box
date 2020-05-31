@@ -1,7 +1,33 @@
 #!/bin/python3
 # Created by the Pizza Processing Unit
+#
+#                                       -:------`                                
+#                                      +ssoooo/:-.``                             
+#                                    .ossssoohhhso+:-``                          
+#                                  .-+s+/::++syso+sso/:..``                      
+#                                .:+oosso+-.-:/+///ossooo/-.``                   
+#                              `:/+oooo++:` ``.--..syysooooo:-.`                 
+#                             ./soooos++/`        `:/::/ooss+/:...`              
+#                            :++++///-....`.::--...`-` `.-/ooo+:-..`.`           
+#                           .:/.````..-/+oooossoooo+/.    -:oyhso/:-`.``         
+#                         .--//-.`..-::+ooosoooosooooo/-.```:++o+++/-....`       
+#                      `://///////:-.--/osssssssssssso+`.` ``:+sssso/:-``..`     
+#                    `-+/+/++ooooooooo+/:+ossoosssso+:. `..-:+ossyyyyo++.``--`   
+#                    `-:osssosssoososso/``.://////:-.``:+++ossosyhyssso:..--..   
+#                   `.-/osssssssssossss+:////:///:..:-:/++oosooooooo+oo//-.``    
+#                 `` `.-:+oosssosssso++++/+oosoooo+-.-+///+//+o+ss+/:-..`        
+#              `-/+++:... `.-:///+/:..+/+osooo+s++o+/:+//://///:--...`           
+#            -/ooooo++/--.-:++++++/:.-//+ooo++/+ooo+/:.::-` `.`.``               
+#          -+ooooooooo+:./++so+o+//shs///sssso+//:///:::.``                      
+#        .+sssossoo+-``.+/:+osoo//s+syy++////-..:::-.``                          
+#      `:osssso+/:-````.oo+osyysossssys+/-````                                   
+#      `..--.`-:--...:/:sssyssyso+/::-.                                          
+#    `.--....`.-.-:/++oo//::-..`                                                 
+#    .----:++:..-.`                                                              
+#     `-:-.``     
 
 import os
+import pwd
 import subprocess
 import requests
 import re
@@ -9,8 +35,11 @@ import argparse
 import getpass
 import time
 
-user = getpass.getuser()
-
+uid = int(os.environ.get('SUDO_UID'))
+gid = int(os.environ.get('SUDO_GID'))
+user_check = subprocess.check_output(['getent passwd "' + str(uid) + '" | cut -d: -f1'], shell=True)
+print("user: " + str(user_check.decode().strip()))
+user = str(user_check.decode().strip())
 parser = argparse.ArgumentParser(description='A HackTheBox quickstart script.')
 parser.add_argument('-n', '--name', metavar='box', action="store", required=True, help='The name of the box, i.e. Magic')
 parser.add_argument('-i', '--ip', metavar='ip_address', action="store", required=True, help='The ip of the box, i.e. 10.10.10.180')
@@ -25,7 +54,8 @@ host = name.lower() + ".htb"
 # TODO: script runs as root, we want it to run as the user, figure out how
 # Create the folder for the machine
 print("Creating folder...")
-os.mkdir(f"/home/{user}/htb/machines/{name}")
+box_path = f"/home/{user}/htb/machines/{name}"
+os.mkdir(box_path)
 
 # Add the boxname to /etc/hosts/
 print(f"Adding {host} to /etc/hosts...")
@@ -47,26 +77,32 @@ if website.status_code == 200:
 
     #TODO: fix this, looks like it starts process, but doesn't save output
     # Call gobuster with wordlist
-    gobuster = subprocess.Popen(["gobuster", "dir", "--url", f"http://{host}", "-w", wordlist, "-o", f"/home/{user}/htb/machines/{name}/gobuster_findings.txt"], stdout=subprocess.DEVNULL)
+    gobuster = subprocess.Popen(["gobuster", "dir", "--url", f"http://{host}", "-w", wordlist, "-o", box_path + "/gobuster_findings.txt"], stdout=subprocess.DEVNULL)
 
 # Start a quick nmap looking for obvious services to start testing asap
-nmap_quick = subprocess.Popen(["nmap", "--top-ports", "200", "-sS", ip, "-oN", f"/home/{user}/htb/machines/{name}/quick_nmap_top200.txt"], stdout=subprocess.DEVNULL)
+nmap_quick = subprocess.Popen(["nmap", "--top-ports", "200", "-sS", ip, "-oN", box_path + "/nmap_quick.txt"], stdout=subprocess.DEVNULL)
 
 # Check if ftp is open
 nmap_quick.wait()
 print("Checking if ftp is open...")
 ftp_open = False
-for line in enumerate(open(f'/home/{user}/htb/machines/{name}/nmap_quick.txt')):
-    if (re.search(r"21\/tcp\s*open\s*ftp", line)):
-        ftp_open = True
-        print("Found open ftp port(21), attempting anonymous ftp login...")
-        ftp = subprocess.Popen(['ftp', '{host}'], stdout=subprocess.PIPE, stdin=subprocess.PIPE, stderr=subprocess.PIPE)
-        time.sleep(.2)
-        stdout_data = p.communicate(input='anonymous'.encode())[0]
-        time.sleep(.1)
-        stdout_data = p.communicate(input='anonymous@htb.com'.encode())[0]
-        print(stdout)
-        ftp.kill()
+
+# Search for ftp port
+with open(box_path + "/nmap_quick.txt") as f:
+    lines = f.readlines()
+    for line in lines:
+        if (re.search(r"21\/tcp\s*open\s*ftp", line)):
+            ftp_open = True
+            input_file = open("tmpout", "wb")
+            output_file = open("tmpout", "r")
+
+            print("Found open ftp port(21), attempting anonymous ftp login...")
+            ftp = subprocess.Popen(['echo', '"user anonymous anonymous@htb.com"', '|', 'ftp', '-n', '-v', '10.10.10.180'], shell=True, capture_output=True, text=True)
+            print(ftp.stdout)
+            anonymous_login = re.search(r"Anonymous access allowed", ftp.stdout)
+            if anonymous_login != None:
+                print(f"Anonymous ftp access allowed! Try 'ftp {ip}', for username enter 'anonymous', for password enter any email address.")
+
 if ftp_open == False:
    print("ftp not open.")
 
@@ -74,16 +110,18 @@ if ftp_open == False:
 print("Starting full nmap scan...")
 nmap_full = subprocess.Popen(["nmap", "-p-", "-T4", ip, "-oN", f"/home/{user}/htb/machines/{name}/nmap_full.txt"], stdout=subprocess.DEVNULL)
 
+# Make sure processes are finished
 nmap_full.wait()
 gobuster.wait()
+
 # chmod directories
 print("Chmod'ing local directories and files for non-sudo access...")
 box_path = f"/home/{user}/htb/machines/{name}"
 for root, dirs, files in os.walk(box_path):
     for dir in dirs:
-        os.chown(os.path.join(root, dir), 1000, 1000)
+        os.chown(os.path.join(root, dir), uid, gid)
         for file in files:
-            os.chown(os.path.join(root, file), 1000, 1000)
+            os.chown(os.path.join(root, file), uid, gid)
 
-print("Done! Check /home/{user}/htb/machines/{name}/ to see script outputs. Happy hacking!")
+print("Done! Check " + box_path + " to see script outputs. Happy hacking!")
 
