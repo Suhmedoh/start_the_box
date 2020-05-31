@@ -12,17 +12,17 @@ import time
 user = getpass.getuser()
 
 parser = argparse.ArgumentParser(description='A HackTheBox quickstart script.')
-parser.add_argument('--name', '-n', metavar='name', action=store, type=string, help='The name of the box, i.e. Magic')
-parser.add_argument('--ip', '-i', metavar='ip', action=store, type=string, help='The ip of the box, i.e. 10.10.10.180')
-parser.add_argument('--wordlist', '-w', metavar='wordlist', action=store, type=string, help='The path to the wordlist. Defaults to /usr/share/dirbuster/wordlists/directory-2.3-small.txt.')
-parser.add_argument('--path', '-p', metavar='path', action=store, type=string, help=f'The path for where to create your folder for this box. Defaults to /home/{user}/htb/machines/box_name.')
+parser.add_argument('-n', '--name', metavar='box', action="store", required=True, help='The name of the box, i.e. Magic')
+parser.add_argument('-i', '--ip', metavar='ip_address', action="store", required=True, help='The ip of the box, i.e. 10.10.10.180')
+parser.add_argument('-w', '--wordlist', metavar='wordlist_path', action="store", required=False, help='The path to the wordlist. Defaults to /usr/share/dirbuster/wordlists/directory-2.3-small.txt.')
+parser.add_argument( '-p', '--path', metavar='folder_path', action="store", required=False, help=f'The path for where to create your folder for this box. Defaults to /home/{user}/htb/machines/box_name.')
 args = parser.parse_args()
 name = args.name
 ip = args.ip
 wordlist = args.wordlist
 
 host = name.lower() + ".htb"
-
+# TODO: script runs as root, we want it to run as the user, figure out how
 # Create the folder for the machine
 print("Creating folder...")
 os.mkdir(f"/home/{user}/htb/machines/{name}")
@@ -67,7 +67,7 @@ for line in enumerate(open(f'/home/{user}/htb/machines/{name}/nmap_quick.txt')):
         stdout_data = p.communicate(input='anonymous@htb.com'.encode())[0]
         print(stdout)
         ftp.kill()
-if ftp_open = False:
+if ftp_open == False:
    print("ftp not open.")
 
 # Start a full scan in nice nmap output, which we can refer to easily
