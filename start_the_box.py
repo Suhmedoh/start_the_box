@@ -30,7 +30,8 @@ if website.status_code == 200:
     wl_path = input()
     if wl_path == "":
         wordlist = "/usr/share/wordlists/dirbuster/directory-list-2.3-small.txt" 
-    else wl_path 
+    else:
+        wordlist = wl_path 
 
     #TODO: fix this, looks like it stars process, but doesn't save output
     # Call gobuster with wordlist
