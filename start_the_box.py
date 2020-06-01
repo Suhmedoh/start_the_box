@@ -42,8 +42,13 @@ gid = int(os.environ.get('SUDO_GID'))
 user_check = subprocess.check_output(['getent passwd "' + str(uid) + '" | cut -d: -f1'], shell=True)
 user = str(user_check.decode().strip())
 
+print("uid: " + str(uid))
+print("gid: " + str(gid))
+print("user: " + str(user))
+
+
 # Set up the argument parser
-parser = argparse.ArgumentParser(description='A HackTheBox quickstart script.')
+parser = argparse.ArgumentParser(description='A HackTheBox quickstart script, must be run as root.')
 
 parser.add_argument('-n', '--name', metavar='box', action="store", required=True, help='The name of the box, i.e. Magic')
 parser.add_argument('-i', '--ip', metavar='ip_address', action="store", required=True, help='The ip of the box, i.e. 10.10.10.180')
@@ -65,16 +70,21 @@ try:
 except:
     wordlist = "/usr/share/wordlists/dirbuster/directory-list-2.3-small.txt" 
 
+try:
+    box_path = args.path
+    assert box_path is not None
+except:
+    box_path = f"/home/{user}/htb/machines/{name}"
 
 # Check if machine is down
 print(colored("Checking if host is up...", "cyan"))
 host_down = subprocess.call(["ping", "-c", "4", ip], stdout=subprocess.DEVNULL) 
 
 if host_down:
-    print(colored("Host seems down(ip {ip}). Make sure you've started the box on HackTheBox.", "red"))
+    print(colored("\tHost seems down(ip {ip}). Make sure you've started the box on HackTheBox.", "red"))
 
 else: 
-    print(colored("Host is up!", "green"))
+    print(colored("\tHost is up!", "green"))
 
 # variable for ftp
 ftp_open = False
@@ -84,7 +94,6 @@ host = name.lower() + ".htb"
 
 # Create the folder for the machine
 print(colored("Creating folder...", "cyan"))
-box_path = f"/home/{user}/htb/machines/{name}"
 os.mkdir(box_path)
 
 # Add the boxname to /etc/hosts/
@@ -95,22 +104,23 @@ with open("/etc/hosts", "a") as hosts_file:
 
 # Set off some processes to run
 ## Check if there's a website on the default port running, if so we can start there
+print(colored(f"Checking for a website...", "cyan"))
 try:
     website = requests.get(f"http://{host}")
     web_up = True
 except:
     web_up = False
-    print(colored("There doesn't seem to be a website on port 80.", "yellow"))
+    print(colored("\tThere doesn't seem to be a website on port 80.", "yellow"))
 
 ## If there is a website, kick off gobuster
 if website.status_code == 200:
-    print(colored(f"There seems to be a website running on port 80 on {host}...", "green"))
+    print(colored(f"\tThere seems to be a website running on port 80 on {host}...", "green"))
 
-    print("Kicking off gobuster...")
+    print("\tKicking off gobuster...")
 
     gobuster = subprocess.Popen(["gobuster", "dir", "--url", f"http://{host}", "-w", wordlist, "--noprogress", "-o", box_path + "/gobuster_findings.txt"], stdout=subprocess.DEVNULL)
 else:
-    print("Not running gobuster.")
+    print("\tNot running gobuster.")
 
 # Start a quick nmap looking for obvious services to start testing asap
 print(colored("Kicking off a quick nmap for the top 200 ports...", "cyan"))
@@ -118,7 +128,7 @@ nmap_quick = subprocess.Popen(["nmap", "--top-ports", "200", "-sS", ip, "-oN", b
 
 # Check if ftp is open
 nmap_quick.wait()
-print(colored("Checking if ftp is open...", "cyan"))
+print(colored("\tChecking if ftp is open...", "cyan"))
 
 # Search for ftp port
 with open(box_path + "/nmap_quick.txt") as f:
@@ -126,19 +136,20 @@ with open(box_path + "/nmap_quick.txt") as f:
     for line in lines:
         if (re.search(r"21\/tcp\s*open\s*ftp", line)):
             ftp_open = True
-            print(colored("Found open ftp port(21), attempting anonymous ftp login...", "green"))
+            print(colored("\t\tFound open ftp port(21), attempting anonymous ftp login...", "green"))
 
             # Run a script which simply checks for anonymous access to ftp
             ftp = subprocess.check_output([os.getcwd() + "/ftp_check.sh"])
             anonymous_login = re.search(r"Anonymous access allowed", ftp.decode('UTF-8'))
             if anonymous_login is not None:
-                print(colored("Anonymous access allowed!", "green"))
+                print(colored("\t\t\tAnonymous access allowed!", "green"))
 
 if ftp_open is False:
-   print(colored("ftp not open.", "red"))
+   print(colored("\t\tftp not open.", "red"))
 
 # Start a full scan in nice nmap output, which we can refer to easily
 print(colored("Starting full nmap scan...", "cyan"))
+print(colored(f"\tThis may take a while;  feel free to open another terminal and check out whats in {box_path} while you're waiting.", "cyan"))
 nmap_full = subprocess.Popen(["nmap", "-p-", "-T4", ip, "-oN", f"/home/{user}/htb/machines/{name}/nmap_full.txt"], stdout=subprocess.DEVNULL)
 
 # Give tips on what do do
@@ -157,15 +168,20 @@ If there's a login form, perhaps brute force it, or make a note to come back lat
 
 # Make sure processes are finished
 nmap_full.wait()
+print(colored("nmap full scan finished, waiting on gobuster, this could take a while...", "cyan"))
+print(colored(f"You can tail gobuster live (sudo tail -f {box_path}/gobuster_findings.txt) in another window to get live updates while you're waiting for this script to finish.", "cyan"))
+
 gobuster.wait()
+if os.stat(box_path + "/gobuster_findings.txt").st_size == 0:
+    print(colored("Gobuster didn't seem to find anything...", "red"))
+else:
+    print(colored("Gobuster found something! Check {box_path}/gobuster_findings.txt!", "green"))
 
 # chmod directories
 print(colored("Chmod'ing local directories and files for non-sudo access...", "cyan"))
 for root, dirs, files in os.walk(box_path):
-    for dir in dirs:
-        os.chown(os.path.join(root, dir), uid, gid)
-        for file in files:
-            os.chown(os.path.join(root, file), uid, gid)
+    for file in files:
+        os.chown(os.path.join(root, file), uid, gid)
 
 print(colored("Done! Check " + box_path + " to see script outputs. Happy hacking!", "green"))
 
