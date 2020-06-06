@@ -173,15 +173,16 @@ print(colored(f"You can tail gobuster live (sudo tail -f {box_path}/gobuster_fin
 
 gobuster.wait()
 if os.stat(box_path + "/gobuster_findings.txt").st_size == 0:
-    print(colored("Gobuster didn't seem to find anything...", "red"))
+    print(colored("\tGobuster didn't seem to find anything...", "red"))
 else:
-    print(colored("Gobuster found something! Check {box_path}/gobuster_findings.txt!", "green"))
+    print(colored(f"\tGobuster found something! Check {box_path}/gobuster_findings.txt!", "green"))
 
 # chmod directories
 print(colored("Chmod'ing local directories and files for non-sudo access...", "cyan"))
+os.chown(box_path, uid, gid)
 for root, dirs, files in os.walk(box_path):
     for file in files:
         os.chown(os.path.join(root, file), uid, gid)
 
-print(colored("Done! Check " + box_path + " to see script outputs. Happy hacking!", "green"))
+print(colored(f"Done! Check {box_path} to see script outputs. Happy hacking!", "green"))
 
