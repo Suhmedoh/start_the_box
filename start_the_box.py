@@ -28,12 +28,14 @@
 
 import argparse
 from termcolor import colored
+from datetime import datetime
 import getpass
 import os
 import pwd
 import re
 import requests
 import subprocess
+from string import Template
 import time
 
 # Get username and ID info for paths
@@ -88,6 +90,8 @@ else:
 
 # variable for ftp
 ftp_open = False
+ftp_anonymous_login = False
+web_up = False
 
 # Formatting name for /etc/hosts
 host = name.lower() + ".htb"
@@ -106,14 +110,14 @@ with open("/etc/hosts", "a") as hosts_file:
 ## Check if there's a website on the default port running, if so we can start there
 print(colored(f"Checking for a website...", "cyan"))
 try:
-    website = requests.get(f"http://{host}")
+    website = requests.get(f"http://{host}", timeout=5)
     web_up = True
 except:
     web_up = False
-    print(colored("\tThere doesn't seem to be a website on port 80.", "yellow"))
+    print(colored("\tThere doesn't seem to be a website on port 80, or the request timed out after 5 seconds.", "yellow"))
 
 ## If there is a website, kick off gobuster
-if website.status_code == 200:
+if web_up is True:
     print(colored(f"\tThere seems to be a website running on port 80 on {host}...", "green"))
 
     print("\tKicking off gobuster...")
@@ -140,9 +144,11 @@ with open(box_path + "/nmap_quick.txt") as f:
 
             # Run a script which simply checks for anonymous access to ftp
             ftp = subprocess.check_output([os.getcwd() + "/ftp_check.sh"])
-            anonymous_login = re.search(r"Anonymous access allowed", ftp.decode('UTF-8'))
-            if anonymous_login is not None:
+            ftp_anonymous_login = re.search(r"Anonymous access allowed", ftp.decode('UTF-8'))
+            if ftp_anonymous_login is not None:
                 print(colored("\t\t\tAnonymous access allowed!", "green"))
+            else:
+                print(colored("\t\t\tAnonymous access is not allowed.", "red"))
 
 if ftp_open is False:
    print(colored("\t\tftp not open.", "red"))
@@ -150,11 +156,11 @@ if ftp_open is False:
 # Start a full scan in nice nmap output, which we can refer to easily
 print(colored("Starting full nmap scan...", "cyan"))
 print(colored(f"\tThis may take a while;  feel free to open another terminal and check out whats in {box_path} while you're waiting.", "cyan"))
-nmap_full = subprocess.Popen(["nmap", "-p-", "-T4", ip, "-oN", f"/home/{user}/htb/machines/{name}/nmap_full.txt"], stdout=subprocess.DEVNULL)
+nmap_full = subprocess.Popen(["nmap", "-p-", "-T4", ip, "-oN", box_path + f"/nmap_full.txt"], stdout=subprocess.DEVNULL)
 
 # Give tips on what do do
 if args.tips is True:
-    if website.status_code == 200:
+    if web_up is True:
         print("""Try poking around the website. 
 If gobuster is finished, start looking through the output for interesting files that may contain useful code or accidental information disclosures. 
 Try to figure out what software the server is running, and start googling for ways to exploit it.  
@@ -171,11 +177,29 @@ nmap_full.wait()
 print(colored("nmap full scan finished, waiting on gobuster, this could take a while...", "cyan"))
 print(colored(f"You can tail gobuster live (sudo tail -f {box_path}/gobuster_findings.txt) in another window to get live updates while you're waiting for this script to finish.", "cyan"))
 
-gobuster.wait()
-if os.stat(box_path + "/gobuster_findings.txt").st_size == 0:
+if web_up is True:
+    gobuster.wait()
+
+gobuster_findings = os.stat(box_path + "/gobuster_findings.txt").st_size
+if gobuster_findings is False:
     print(colored("\tGobuster didn't seem to find anything...", "red"))
 else:
     print(colored(f"\tGobuster found something! Check {box_path}/gobuster_findings.txt!", "green"))
+
+# Create writeup.txt
+print(colored("Creating writeup.txt...", "cyan"))
+current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+writeup = f'{name}\n'
+f'{ip}\n'
+f'{current_datetime}\n'
+f'\n'
+f'There {"seems to be a website on port 80." if web_up else "does not"} seem to be a website on port 80.\n'
+f'ftp on port 20 {"seems to be open" if ftp_open else "does not seem to be open"}.\n'
+f'Anonymous access {"is" if ftp_anonymous_login else "is not"} allowed.\n'
+
+with open(box_path + "/writeup.txt", "w") as file:
+    file.write(writeup.txt)
 
 # chmod directories
 print(colored("Chmod'ing local directories and files for non-sudo access...", "cyan"))
