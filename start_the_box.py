@@ -38,25 +38,24 @@ import subprocess
 from string import Template
 import time
 
+if os.geteuid() != 0:
+    print(colored("You need to run me with sudo", "red"), colored(":)", "yellow"))
+    exit(1)
+
 # Get username and ID info for paths
 uid = int(os.environ.get('SUDO_UID'))
 gid = int(os.environ.get('SUDO_GID'))
 user_check = subprocess.check_output(['getent passwd "' + str(uid) + '" | cut -d: -f1'], shell=True)
 user = str(user_check.decode().strip())
 
-print("uid: " + str(uid))
-print("gid: " + str(gid))
-print("user: " + str(user))
-
-
 # Set up the argument parser
 parser = argparse.ArgumentParser(description='A HackTheBox quickstart script, must be run as root.')
 
-parser.add_argument('-n', '--name', metavar='box', action="store", required=True, help='The name of the box, i.e. Magic')
-parser.add_argument('-i', '--ip', metavar='ip_address', action="store", required=True, help='The ip of the box, i.e. 10.10.10.180')
-parser.add_argument('-w', '--wordlist', metavar='wordlist_path', action="store", required=False, help='The path to the wordlist. Defaults to /usr/share/dirbuster/wordlists/directory-2.3-small.txt.')
-parser.add_argument('-p', '--path', metavar='folder_path', action="store", required=False, help=f'The path for where to create your folder for this box. Defaults to /home/{user}/htb/machines/box_name.')
-parser.add_argument('-t', '--tips', action="store_true", required=False, help=f'Flag that will provide tips to point you in the right direction, based on what is found.')
+parser.add_argument('-n', '--' + colored('name', 'green'), metavar=colored('box', 'green'), action="store", required=True, help='The name of the box, i.e. Magic')
+parser.add_argument('-i', '--' + colored('ip', 'green'),  metavar=colored('ip_address', 'green'), action="store", required=True, help='The ip of the box, i.e. 10.10.10.180')
+parser.add_argument('-w', '--' + colored('wordlist', 'yellow'),  metavar=colored('wordlist_path', 'yellow'), action="store", required=False, help='The path to the wordlist. Defaults to /usr/share/dirbuster/wordlists/directory-2.3-small.txt.')
+parser.add_argument('-p', '--' + colored('path', 'yellow'),  metavar=colored('folder_path', 'yellow'), action="store", required=False, help=f'The path for where to create your folder for this box. Defaults to /home/{user}/htb/machines/box_name.')
+parser.add_argument('-t', '--' + colored('tips', 'yellow'), action="store_true", required=False, help=f'Flag that will provide tips to point you in the right direction, based on what is found.')
 
 args = parser.parse_args()
 
