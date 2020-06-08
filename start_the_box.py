@@ -51,11 +51,11 @@ user = str(user_check.decode().strip())
 # Set up the argument parser
 parser = argparse.ArgumentParser(description='A HackTheBox quickstart script, must be run as root.')
 
-parser.add_argument('-n', '--' + colored('name', 'green'), metavar=colored('box', 'green'), action="store", required=True, help='The name of the box, i.e. Magic')
-parser.add_argument('-i', '--' + colored('ip', 'green'),  metavar=colored('ip_address', 'green'), action="store", required=True, help='The ip of the box, i.e. 10.10.10.180')
-parser.add_argument('-w', '--' + colored('wordlist', 'yellow'),  metavar=colored('wordlist_path', 'yellow'), action="store", required=False, help='The path to the wordlist. Defaults to /usr/share/dirbuster/wordlists/directory-2.3-small.txt.')
-parser.add_argument('-p', '--' + colored('path', 'yellow'),  metavar=colored('folder_path', 'yellow'), action="store", required=False, help=f'The path for where to create your folder for this box. Defaults to /home/{user}/htb/machines/box_name.')
-parser.add_argument('-t', '--' + colored('tips', 'yellow'), action="store_true", required=False, help=f'Flag that will provide tips to point you in the right direction, based on what is found.')
+parser.add_argument('-n', '--name', metavar=colored('box', 'green'), action="store", required=True, help='The name of the box, i.e. Magic')
+parser.add_argument('-i', '--ip', metavar=colored('ip_address', 'green'), action="store", required=True, help='The ip of the box, i.e. 10.10.10.180')
+parser.add_argument('-w', '--wordlist', metavar=colored('wordlist_path', 'yellow'), action="store", required=False, help='The path to the wordlist. Defaults to /usr/share/dirbuster/wordlists/directory-2.3-small.txt.')
+parser.add_argument('-p', '--path', metavar=colored('folder_path', 'yellow'), action="store", required=False, help=f'The path for where to create your folder for this box. Defaults to /home/{user}/htb/machines/box_name.')
+parser.add_argument('-t', '--tips', action="store_true", required=False, help=f'Flag that will provide tips to point you in the right direction, based on what is found.')
 
 args = parser.parse_args()
 
@@ -87,10 +87,11 @@ if host_down:
 else: 
     print(colored("\tHost is up!", "green"))
 
-# variable for ftp
+# variables for checks
 ftp_open = False
 ftp_anonymous_login = False
 web_up = False
+gobuster_findings = 0
 
 # Formatting name for /etc/hosts
 host = name.lower() + ".htb"
@@ -119,11 +120,11 @@ except:
 if web_up is True:
     print(colored(f"\tThere seems to be a website running on port 80 on {host}...", "green"))
 
-    print("\tKicking off gobuster...")
+    print(colored("\tKicking off gobuster...", "cyan"))
 
-    gobuster = subprocess.Popen(["gobuster", "dir", "--url", f"http://{host}", "-w", wordlist, "--noprogress", "-o", box_path + "/gobuster_findings.txt"], stdout=subprocess.DEVNULL)
+    gobuster = subprocess.Popen(["gobuster", "dir", "--url", f"http://{host}", "-w", wordlist, "--noprogress", "-o", box_path + "/gobuster_findings.txt", "2>" + box_path + "gobuster_errors.txt"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 else:
-    print("\tNot running gobuster.")
+    print(colored("\tNot running gobuster.", "yellow"))
 
 # Start a quick nmap looking for obvious services to start testing asap
 print(colored("Kicking off a quick nmap for the top 200 ports...", "cyan"))
@@ -139,10 +140,10 @@ with open(box_path + "/nmap_quick.txt") as f:
     for line in lines:
         if (re.search(r"21\/tcp\s*open\s*ftp", line)):
             ftp_open = True
-            print(colored("\t\tFound open ftp port(21), attempting anonymous ftp login...", "green"))
+            print(colored("\t\tFound open ftp port(21), attempting anonymous ftp login...", "cyan"))
 
             # Run a script which simply checks for anonymous access to ftp
-            ftp = subprocess.check_output([os.getcwd() + "/ftp_check.sh"])
+            ftp = subprocess.check_output(["stb_ftp_check.sh"])
             ftp_anonymous_login = re.search(r"Anonymous access allowed", ftp.decode('UTF-8'))
             if ftp_anonymous_login is not None:
                 print(colored("\t\t\tAnonymous access allowed!", "green"))
@@ -178,10 +179,11 @@ print(colored(f"You can tail gobuster live (sudo tail -f {box_path}/gobuster_fin
 
 if web_up is True:
     gobuster.wait()
+    gobuster_findings = os.stat(box_path + "/gobuster_findings.txt").st_size
+    #print("gobuster findings:" + str(gobuster_findings))
 
-gobuster_findings = os.stat(box_path + "/gobuster_findings.txt").st_size
 if gobuster_findings is False:
-    print(colored("\tGobuster didn't seem to find anything...", "red"))
+    print(colored("\tGobuster didn't seem to find anything.", "red"))
 else:
     print(colored(f"\tGobuster found something! Check {box_path}/gobuster_findings.txt!", "green"))
 
@@ -189,16 +191,17 @@ else:
 print(colored("Creating writeup.txt...", "cyan"))
 current_datetime = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-writeup = f'{name}\n'
-f'{ip}\n'
-f'{current_datetime}\n'
-f'\n'
-f'There {"seems to be a website on port 80." if web_up else "does not"} seem to be a website on port 80.\n'
-f'ftp on port 20 {"seems to be open" if ftp_open else "does not seem to be open"}.\n'
+writeup = f'{name}\n' \
+f'{ip}\n' \
+f'{current_datetime}\n' \
+f'\n' \
+f'There {"seems" if web_up else "does not seem"} to be a website on port 80.\n' \
+f'ftp on port 20 {"seems to be open" if ftp_open else "does not seem to be open"}.\n' \
 f'Anonymous access {"is" if ftp_anonymous_login else "is not"} allowed.\n'
+f'Gobuster {"found some directories using {{wordlist}}" if gobuster_findings else "did not find anything using {{wordlist}}"}\n'
 
 with open(box_path + "/writeup.txt", "w") as file:
-    file.write(writeup.txt)
+    file.write(writeup)
 
 # chmod directories
 print(colored("Chmod'ing local directories and files for non-sudo access...", "cyan"))

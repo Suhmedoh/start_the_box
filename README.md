@@ -1,21 +1,34 @@
 # start_the_box (stb)
 
 This is a python3 tool used to quickly start up enumeration & info gathering on a machine for HackTheBox.
+
 Needs to be run as root for the tools.
+
+![Example of start the box being run](./example.png?raw=true "Example of Start The Box")
 
 ## HOW TO USE
 Clone the repo somewhere (I have a folder in home where I keep all my github repos, ~/github/start_the_box
+
 Depending on where you want to store your machine folders, I symbolically link to that base folder(~/htb/machines/stb)
+
 Run start_the_box.py with sudo to see necessary arguments
 
 `cd ~/github`
+
 `git clone https://github.com/Suhmedoh/start_the_box`
+
 `mkdir -p /home/kali/htb/machines`
+
 `cd /home/kali/htb/machines`
+
 `sudo ln -s /home/kali/github/start_the_box/start_the_box.py /usr/local/bin`
+
 `sudo stb`
+
 `sudo stb --help`
+
 `sudo stb -n Magic -i 10.10.10.4`
+
 
 ### Current features
 * Take user input for boxname + IP
