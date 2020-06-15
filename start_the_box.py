@@ -82,7 +82,8 @@ print(colored("Checking if host is up...", "cyan"))
 host_down = subprocess.call(["ping", "-c", "4", ip], stdout=subprocess.DEVNULL) 
 
 if host_down:
-    print(colored("\tHost seems down(ip {ip}). Make sure you've started the box on HackTheBox.", "red"))
+    print(colored(f"\tHost seems down(ip {ip}). Make sure you've started the box on HackTheBox.", "red"))
+    exit(1)
 
 else: 
     print(colored("\tHost is up!", "green"))
@@ -156,7 +157,7 @@ if ftp_open is False:
 # Start a full scan in nice nmap output, which we can refer to easily
 print(colored("Starting full nmap scan...", "cyan"))
 print(colored(f"\tThis may take a while;  feel free to open another terminal and check out whats in {box_path} while you're waiting.", "cyan"))
-nmap_full = subprocess.Popen(["nmap", "-p-", "-T4", ip, "-oN", box_path + f"/nmap_full.txt"], stdout=subprocess.DEVNULL)
+nmap_full = subprocess.Popen(["nmap", "-sV", "-p-", "-T4", ip, "-oN", box_path + f"/nmap_full.txt"], stdout=subprocess.DEVNULL)
 
 # Give tips on what do do
 if args.tips is True:
@@ -180,9 +181,8 @@ print(colored(f"You can tail gobuster live (sudo tail -f {box_path}/gobuster_fin
 if web_up is True:
     gobuster.wait()
     gobuster_findings = os.stat(box_path + "/gobuster_findings.txt").st_size
-    #print("gobuster findings:" + str(gobuster_findings))
-
-if gobuster_findings is False:
+    
+if not gobuster_findings:
     print(colored("\tGobuster didn't seem to find anything.", "red"))
 else:
     print(colored(f"\tGobuster found something! Check {box_path}/gobuster_findings.txt!", "green"))
